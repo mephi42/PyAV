@@ -32,7 +32,7 @@ cdef object _cinit_sentinel = object()
 
 cdef class Container(object):
 
-    def __cinit__(self, sentinel, file_, format_name, options, container_options, stream_options, metadata_encoding, metadata_errors):
+    def __cinit__(self, sentinel, file_, format_name, options, container_options, stream_options, metadata_encoding, metadata_errors, bufsize):
 
         if sentinel is not _cinit_sentinel:
             raise RuntimeError('cannot construct base Container')
@@ -112,7 +112,7 @@ cdef class Container(object):
             self.pos_is_valid = True
 
             # This is effectively the maximum size of reads.
-            self.bufsize = 32 * 1024
+            self.bufsize = bufsize
             self.buffer = <unsigned char*>lib.av_malloc(self.bufsize)
 
             self.iocontext = lib.avio_alloc_context(
@@ -185,7 +185,8 @@ cdef class Container(object):
 
 def open(file, mode=None, format=None, options=None,
          container_options=None, stream_options=None,
-         metadata_encoding=None, metadata_errors='strict'):
+         metadata_encoding=None, metadata_errors='strict',
+         bufsize=32 * 1024):
     """open(file, mode='r', format=None, options=None, metadata_encoding=None, metadata_errors='strict')
 
     Main entrypoint to opening files/streams.
@@ -201,6 +202,7 @@ def open(file, mode=None, format=None, options=None,
         reading on Python 2 (returning ``str`` instead of ``unicode``).
     :param str metadata_errors: Specifies how to handle encoding errors; behaves like
         ``str.encode`` parameter. Defaults to strict.
+    :param int bufsize: Decoder buffer size. Defaults to 32k.
 
     For devices (via ``libavdevice``), pass the name of the device to ``format``,
     e.g.::
@@ -219,7 +221,8 @@ def open(file, mode=None, format=None, options=None,
         return InputContainer(
             _cinit_sentinel, file, format, options,
             container_options, stream_options,
-            metadata_encoding, metadata_errors
+            metadata_encoding, metadata_errors,
+            bufsize
         )
     if mode.startswith('w'):
         if stream_options:
@@ -227,6 +230,7 @@ def open(file, mode=None, format=None, options=None,
         return OutputContainer(
             _cinit_sentinel, file, format, options,
             container_options, stream_options,
-            metadata_encoding, metadata_errors
+            metadata_encoding, metadata_errors,
+            bufsize
         )
     raise ValueError("mode must be 'r' or 'w'; got %r" % mode)
